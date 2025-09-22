@@ -48,7 +48,7 @@ my-express-app
 
 4. **Run the application:**
    ```
-   npm start
+   npx ts-node-dev --transpile-only src/server.ts
    ```
 
 ## Usage
