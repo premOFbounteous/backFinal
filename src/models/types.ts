@@ -47,4 +47,10 @@ export interface OrderDoc {
   status: "pending" | "paid" | "failed";
 }
 
+export interface Wishlist {
+  _id?: ObjectId;
+  user_id: string;
+  items: number[]; // This will be an array of product IDs
+}
+
 export type JWTPayload = { user_id: string };
