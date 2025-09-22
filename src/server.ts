@@ -9,6 +9,8 @@ import ordersRouter from './routes/orders';
 import categoryRouter from "./routes/category"
 import wishListRouter from "./routes/wishlist"
 
+
+
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 
@@ -27,6 +29,7 @@ app.use("/cart", cartRouter);
 app.use("/orders", ordersRouter);
 app.use("/categories",categoryRouter);
 app.use("/wishlist",wishListRouter);
+
 
 interface MongoInit {
     (): Promise<void>;

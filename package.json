@@ -23,7 +23,8 @@
     "jsonwebtoken": "^8.5.1",
     "mime": "^4.1.0",
     "mongodb": "^6.20.0",
-    "mongoose": "^5.10.9"
+    "mongoose": "^5.10.9",
+    "stripe": "^18.5.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
