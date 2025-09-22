@@ -3,12 +3,12 @@ import { ObjectId } from "mongodb";
 export interface Product {
   _id?: ObjectId | string;
   id: number;
-  title?: string;
+  title?: string;//name
   description?: string;
-  price?: number;
+  price?: number;//price.price
   rating?: number;
   category?: string;
-  stock?: number;
+  stock?: number;//stock.quantity
   brand?:string
 }
 

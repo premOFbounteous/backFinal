@@ -61,7 +61,7 @@ router.get("/", async (req: Request, res: Response) => {
   }
 });
 
-  router.get("/search1", async (req: Request, res: Response) => {
+  router.get("/search", async (req: Request, res: Response) => {
   try {
     const db = getDb();
     const col = db.collection<Product>("ecommerce");
@@ -105,7 +105,7 @@ router.get("/", async (req: Request, res: Response) => {
 });
 
 //voice-search"
-router.get("/search", async (req, res) => {
+router.get("/voice-search", async (req, res) => {
   try {
     const botCol = getDb().collection("BOTdoc");
     const ecommerceCol = getDb().collection("ecommerce");
@@ -167,7 +167,7 @@ router.get("/search", async (req, res) => {
       const { _id, ...rest } = prod;
       return { ...rest, _id: _id?.toString?.() ?? _id };
     });
-    console.log("this is data -- "+sanitizedProducts)
+    // console.log("this is data -- "+sanitizedProducts)
     return res.json({
       result: resultText,
       products: sanitizedProducts,
