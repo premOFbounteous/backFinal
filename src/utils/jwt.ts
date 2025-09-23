@@ -4,14 +4,14 @@ import { JWTPayload } from "../models/types";
 
 export function createAccessToken(payload: JWTPayload): string {
   return jwt.sign(payload, SECRET_KEY, {
-    algorithm: ALGORITHM as any,
+    algorithm: ALGORITHM ,
     expiresIn: `${ACCESS_TOKEN_EXPIRE_MINUTES}m`,
   });
 }
 
 export function createRefreshToken(payload: JWTPayload): string {
   return jwt.sign(payload, SECRET_KEY, {
-    algorithm: ALGORITHM as any,
+    algorithm: ALGORITHM ,
     expiresIn: `${REFRESH_TOKEN_EXPIRE_DAYS}d`,
   });
 }
