@@ -184,7 +184,7 @@ router.post('/webhook/stripe', express.raw({ type: 'application/json' }), async 
 });
 
 // POST /cart/checkout
-router.post('/cart/checkout', authMiddleware, async (req: Request, res: Response) => {
+router.post('/checkout', authMiddleware, async (req: Request, res: Response) => {
     try {
         const user_id: string = (req as any).user.user_id;
         const carts = db.collection<Cart>('carts');;
