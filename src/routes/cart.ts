@@ -18,7 +18,6 @@ const client = new MongoClient(MONGO_URI, { ignoreUndefined: true });
   db = client.db(DB_NAME);
  
 const router = Router();
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 function serializeCart(cart: Cart) {
   return {
     _id: String(cart._id),
