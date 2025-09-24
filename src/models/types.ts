@@ -1,15 +1,26 @@
 import { ObjectId } from "mongodb";
 
+export interface Address {
+  _id: ObjectId;
+  street: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  isDefault: boolean;
+}
+
 export interface Product {
   _id?: ObjectId | string;
   id: number;
-  title?: string;//name
+  title?: string;
   description?: string;
-  price?: number;//price.price
+  price?: number;
   rating?: number;
   category?: string;
-  stock?: number;//stock.quantity
-  brand?:string
+  stock?: number;
+  brand?: string;
+  thumbnail?: string; // Ensure this is here for consistency
 }
 
 export interface UserDoc {
@@ -18,6 +29,8 @@ export interface UserDoc {
   email: string;
   password: string;
   user_id: string;
+  DOB: Date;
+  addresses: Address[];
   created_at: Date;
 }
 
@@ -37,6 +50,7 @@ export interface OrderItem {
   title?: string;
   price?: number;
   quantity: number;
+  thumbnail?: string; // --- ADDED: To store the image URL with the order item ---
 }
 
 export interface OrderDoc {
@@ -45,12 +59,14 @@ export interface OrderDoc {
   items: OrderItem[];
   total: number;
   status: "pending" | "paid" | "failed";
+  createdAt: Date; // --- ADDED: To store the exact date and time of the order ---
+  stripe_session_id?: string; // Good practice to store this from the webhook
 }
 
 export interface Wishlist {
   _id?: ObjectId;
   user_id: string;
-  items: number[]; // This will be an array of product IDs
+  items: number[];
 }
 
 export type JWTPayload = { user_id: string };
