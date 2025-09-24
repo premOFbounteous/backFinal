@@ -248,8 +248,8 @@ router.post('/checkout', authMiddleware, async (req: Request, res: Response) => 
             payment_method_types: ['card'],
             line_items: stripe_line_items,
             mode: 'payment',
-            success_url: 'https://dashboard.stripe.com/test/payments',
-            cancel_url: 'https://youtube.com',
+            success_url: 'https://brocode140.netlify.app/#/success',
+            cancel_url: 'https://brocode140.netlify.app/#/cancel',
             metadata: {
                 orderId: String(orderId),
             },
