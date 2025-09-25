@@ -12,11 +12,24 @@ const router = Router();
 
 type AddressInput = Omit<Address, '_id' | 'isDefault'>;
 
+
+type AddressInput = Omit<Address, '_id' | 'isDefault'>;
+
 // POST /users/register
 router.post(
   '/register',
   async (req: Request<{}, {}, { username?: string; email?: string; password?: string; DOB?: string; address?: AddressInput }>, res: Response) => {
+  async (req: Request<{}, {}, { username?: string; email?: string; password?: string; DOB?: string; address?: AddressInput }>, res: Response) => {
     try {
+      const { username, email, password, DOB, address } = req.body || {};
+      
+      if (!username || !email || !password || !DOB || !address || !address.street || !address.city || !address.state || !address.postalCode || !address.country) {
+        return res.status(422).json({ detail: 'Username, email, password, DOB, and a complete address object are required' });
+      }
+
+      const dobDate = new Date(DOB);
+      if (isNaN(dobDate.getTime())) {
+          return res.status(422).json({ detail: 'Invalid DOB format. Please use a valid date string like "YYYY-MM-DD".' });
       const { username, email, password, DOB, address } = req.body || {};
       
       if (!username || !email || !password || !DOB || !address || !address.street || !address.city || !address.state || !address.postalCode || !address.country) {
@@ -34,14 +47,17 @@ router.post(
       const existsEmail = await users.findOne({ email });
       if (existsEmail) {
         return res.status(400).json({ detail: 'Email already registered' });
+        return res.status(400).json({ detail: 'Email already registered' });
       }
       const existsUsername = await users.findOne({ username });
       if (existsUsername) {
+        return res.status(400).json({ detail: 'Username taken' });
         return res.status(400).json({ detail: 'Username taken' });
       }
 
       const hashed = bcrypt.hashSync(password, 10);
       const user_id = randomUUID();
+      
       
       const userDoc: UserDoc = {
         username,
@@ -56,10 +72,19 @@ router.post(
             isDefault: true
           }
         ],
+        DOB: dobDate,
+        addresses: [
+          {
+            ...address,
+            _id: new ObjectId(), // This now works because ObjectId is imported
+            isDefault: true
+          }
+        ],
         created_at: new Date(),
       };
 
       await users.insertOne(userDoc);
+      res.status(201).json({ message: 'User registered successfully', user_id });
       res.status(201).json({ message: 'User registered successfully', user_id });
     } catch (err) {
       console.error(err);

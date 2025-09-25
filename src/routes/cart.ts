@@ -294,6 +294,7 @@ router.post('/checkout', authMiddleware, async (req: Request<{}, {}, { addressId
         res.status(500).json({ detail: 'Internal Server Error' });
     }
 });
+
  
  
 // POST /cart/update_quantity
