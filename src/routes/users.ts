@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { getDb } from '../db/mongo';
 import { createAccessToken, createRefreshToken, verifyToken } from '../utils/jwt';
-import { Address, UserDoc } from '../models/types';
+import { Address, JWTPayload, UserDoc } from '../models/types';
 import { ObjectId } from 'mongodb';
 import { authMiddleware } from '../middleware/auth';
 
@@ -155,6 +155,7 @@ router.put('/addresses/:addressId', authMiddleware, async (req: Request<{ addres
 });
 
 
+
 // --- NEW: DELETE AN ADDRESS ---
 router.delete('/addresses/:addressId', authMiddleware, async (req: Request<{ addressId: string }>, res: Response) => {
     try {
@@ -180,27 +181,21 @@ router.post(
     try {
       const { email, password } = req.body || {};
       if (!email || !password) {
-        res.status(422).json({ detail: 'email and password are required' });
-        return;
+        return res.status(422).json({ detail: 'email and password are required' });
       }
 
       const db = getDb();
-      const users = db.collection<UserDoc>('users');
-      const user = await users.findOne({ email });
+      const user = await db.collection<UserDoc>('users').findOne({ email });
 
-      if (!user) {
-        res.status(404).json({ detail: 'User not found' });
-        return;
+      if (!user || !bcrypt.compareSync(password, user.password)) {
+        return res.status(401).json({ detail: 'Invalid credentials' });
       }
-
-      const ok = bcrypt.compareSync(password, user.password);
-      if (!ok) {
-        res.status(401).json({ detail: 'Incorrect password' });
-        return;
-      }
-
-      const access_token = createAccessToken({ user_id: user.user_id });
-      const refresh_token = createRefreshToken({ user_id: user.user_id });
+      
+      // --- FIX IS HERE ---
+      // Add 'role: "user"' to the payload to match the JWTPayload type.
+      const payload: JWTPayload = { user_id: user.user_id, role: 'user' };
+      const access_token = createAccessToken(payload);
+      const refresh_token = createRefreshToken(payload);
 
       res.json({ access_token, refresh_token, token_type: 'bearer' });
     } catch (err) {
@@ -211,44 +206,58 @@ router.post(
 );
 
 // POST /users/refresh
-// Accepts refresh_token in query or body (keeps same shape as original)
 router.post(
   '/refresh',
-  async (
-    req: Request<Record<string, never>, unknown, { refresh_token?: string }, { refresh_token?: string }>,
-    res: Response
-  ) => {
+  async (req, res) => {
     try {
-      const tokenFromQuery = req.query.refresh_token;
-      const tokenFromBody = req.body?.refresh_token;
-      const refresh_token = tokenFromQuery ?? tokenFromBody;
+      const { refresh_token } = req.body;
 
       if (!refresh_token) {
-        res.status(422).json({ detail: 'refresh_token is required' });
-        return;
+        return res.status(422).json({ detail: 'refresh_token is required' });
+      }
+      
+      // --- FIX IS HERE ---
+      // Verify the token and check that it's a valid USER token.
+      const payload = verifyToken(String(refresh_token)) as JWTPayload;
+      
+      if (payload.role !== 'user' || !payload.user_id) {
+        return res.status(401).json({ detail: 'Invalid refresh token for a user account' });
       }
 
-      try {
-        const payload = verifyToken(String(refresh_token));
-        const user_id = (payload as any).user_id;
-        if (!user_id) {
-          res.status(401).json({ detail: 'Invalid refresh token' });
-          return;
-        }
+      // Create new tokens with the correct payload structure
+      const new_payload: JWTPayload = { user_id: payload.user_id, role: 'user' };
+      const access_token = createAccessToken(new_payload);
+      const new_refresh = createRefreshToken(new_payload);
 
-        const access_token = createAccessToken({ user_id });
-        const new_refresh = createRefreshToken({ user_id });
-
-        res.json({ access_token, refresh_token: new_refresh, token_type: 'bearer' });
-      } catch (err) {
-        // verifyToken throws on invalid token
-        res.status(401).json({ detail: 'Invalid refresh token' });
-      }
+      res.json({ access_token, refresh_token: new_refresh, token_type: 'bearer' });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ detail: 'Internal Server Error' });
+      // Catches expired or malformed tokens
+      res.status(401).json({ detail: 'Invalid or expired refresh token' });
     }
   }
 );
+
+
+router.get('/profile', authMiddleware, async (req: Request, res: Response) => {
+    try {
+        // The user_id is attached to the request by the authMiddleware
+        const user_id = (req as any).user.user_id;
+
+        const db = getDb();
+        const user = await db.collection<UserDoc>('users').findOne({ user_id });
+
+        if (!user) {
+            return res.status(404).json({ detail: 'User profile not found' });
+        }
+        const { password, ...userProfile } = user;//removing password field from the user 
+
+        res.json(userProfile);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ detail: 'Internal Server Error' });
+    }
+});
+
 
 export default router;

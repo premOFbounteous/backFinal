@@ -1,15 +1,16 @@
 import { ObjectId } from "mongodb";
 
-export interface Address {
-  _id: ObjectId;
-  street: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  country: string;
-  isDefault: boolean;
+// --- NEW: VENDOR INTERFACE ---
+export interface VendorDoc {
+  _id?: ObjectId;
+  companyName: string;
+  email: string;
+  password: string;
+  vendor_id: string; // Unique ID for the vendor
+  createdAt: Date;
 }
 
+// --- UPDATED: PRODUCT INTERFACE ---
 export interface Product {
   _id?: ObjectId | string;
   id: number;
@@ -20,7 +21,27 @@ export interface Product {
   category?: string;
   stock?: number;
   brand?: string;
-  thumbnail?: string; // Ensure this is here for consistency
+  thumbnail?: string;
+  vendorId?: string; // --- ADDED: To link the product to a vendor ---
+}
+
+// --- UPDATED: JWT PAYLOAD ---
+export type JWTPayload = {
+  user_id?: string;  // For regular users
+  vendor_id?: string; // For vendors
+  role: 'user' | 'vendor'; // To distinguish between token types
+};
+
+
+// ... (Other interfaces like Address, UserDoc, Cart, OrderDoc remain the same)
+export interface Address {
+  _id: ObjectId;
+  street: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  isDefault: boolean;
 }
 
 export interface UserDoc {
@@ -38,35 +59,30 @@ export interface CartItem {
   product_id: number;
   quantity: number;
 }
-
 export interface Cart {
   _id?: ObjectId;
   user_id: string;
   items: CartItem[];
 }
-
 export interface OrderItem {
   product_id: number;
   title?: string;
   price?: number;
   quantity: number;
-  thumbnail?: string; // --- ADDED: To store the image URL with the order item ---
+  thumbnail?: string;
 }
-
 export interface OrderDoc {
   _id?: ObjectId;
   user_id: string;
   items: OrderItem[];
   total: number;
   status: "pending" | "paid" | "failed";
-  createdAt: Date; // --- ADDED: To store the exact date and time of the order ---
-  stripe_session_id?: string; // Good practice to store this from the webhook
+  createdAt: Date;
+  stripe_session_id?: string;
+  shippingAddress: Address;
 }
-
 export interface Wishlist {
   _id?: ObjectId;
   user_id: string;
   items: number[];
 }
-
-export type JWTPayload = { user_id: string };

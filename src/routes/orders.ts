@@ -15,7 +15,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
     // Find all orders for the user and sort them by creation date in descending order (newest first)
     const orders = await ordersCol.find({ user_id }).sort({ createdAt: -1 }).toArray();
 
-    // The 'orders' array now contains all the necessary data, including thumbnail and createdAt
+    // The 'orders' array now contains all the necessary data
     res.json({ count: orders.length, orders });
 
   } catch (err) {

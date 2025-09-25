@@ -8,7 +8,9 @@ import cartRouter, { stripeWebhookHandler } from "./routes/cart"; // Import the 
 import ordersRouter from './routes/orders';
 import categoryRouter from "./routes/category";
 import wishListRouter from "./routes/wishlist";
- 
+import vendorRouter from "./routes/vendors";
+
+
 //testing commit
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
@@ -34,6 +36,8 @@ app.use("/cart", cartRouter);
 app.use("/orders", ordersRouter);
 app.use("/categories", categoryRouter);
 app.use("/wishlist", wishListRouter);
+app.use("/vendors", vendorRouter);
+
  
 initMongo()
     .then(() => {
