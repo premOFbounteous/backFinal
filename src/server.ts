@@ -36,7 +36,7 @@ app.use("/cart", cartRouter);
 app.use("/orders", ordersRouter);
 app.use("/categories", categoryRouter);
 app.use("/wishlist", wishListRouter);
-app.use("/v", vendorRouter);
+app.use("/vendors", vendorRouter);
 
  
 initMongo()

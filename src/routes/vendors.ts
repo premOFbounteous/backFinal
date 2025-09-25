@@ -9,7 +9,7 @@ import { vendorAuthMiddleware } from '../middleware/vendorAuth';
 const router = Router();
 
 // POST /vendors/register
-router.post('/r', async (req: Request<{}, {}, { companyName?: string; email?: string; password?: string }>, res: Response) => {
+router.post('/register', async (req: Request<{}, {}, { companyName?: string; email?: string; password?: string }>, res: Response) => {
     try {
         const { companyName, email, password } = req.body;
         if (!companyName || !email || !password) {
