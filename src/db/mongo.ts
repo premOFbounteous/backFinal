@@ -7,7 +7,7 @@ export async function initMongo(): Promise<void> {
   const client = new MongoClient(MONGO_URI, { ignoreUndefined: true });
   await client.connect();
   db = client.db(DB_NAME);
-  console.log(`[Mongo] Connected to ${MONGO_URI}/${DB_NAME}`);
+  console.log(`Mongo Connected to DB`);
 }
 
 export function getDb(): Db {

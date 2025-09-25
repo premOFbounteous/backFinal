@@ -11,14 +11,10 @@ import wishListRouter from "./routes/wishlist";
 import vendorRouter from "./routes/vendors";
 
 
-//testing commit
-
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+// process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
  
 const app = express();
  
-// Stripe Webhook Route - MUST BE BEFORE express.json()
-// Use express.raw() to get the raw body for signature verification
 app.post("/cart/webhook/stripe", express.raw({ type: 'application/json' }), stripeWebhookHandler);
  
 // NOW, use the JSON parser for all other routes
