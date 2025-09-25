@@ -22,6 +22,7 @@ export interface Product {
   stock?: number;
   brand?: string;
   thumbnail?: string;
+  images?: string[];
   vendorId?: string; // --- ADDED: To link the product to a vendor ---
 }
 

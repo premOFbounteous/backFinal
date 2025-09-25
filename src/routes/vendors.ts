@@ -87,7 +87,7 @@ router.get('/products', vendorAuthMiddleware, async (req: Request, res: Response
 router.post('/products', vendorAuthMiddleware, async (req: Request, res: Response) => {
     try {
         const vendor_id = (req as any).vendor.vendor_id;
-        const { title, description, price, stock, category, brand, thumbnail } = req.body;
+        const { title, description, price, stock, category, brand, thumbnail,images } = req.body;
         
         if (!title || !price || !stock) {
             return res.status(422).json({ detail: 'Title, price, and stock are required fields' });
@@ -111,6 +111,7 @@ router.post('/products', vendorAuthMiddleware, async (req: Request, res: Respons
             thumbnail: thumbnail || '',
             vendorId: vendor_id, // Link product to the vendor
             rating: 0, // Default rating
+            images: images || [thumbnail]
         };
 
         await productsCol.insertOne(newProduct as Product);
