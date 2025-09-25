@@ -1,10 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { getDb } from '../db/mongo';
 import { authMiddleware } from '../middleware/auth';
-import { Cart, CartItem, OrderDoc, OrderItem, Product } from '../models/types';
+import { Cart, OrderDoc, OrderItem, Product, UserDoc } from '../models/types';
 import Stripe from 'stripe';
-import { Db, ObjectId,MongoClient, Collection } from 'mongodb';
-import express from "express";
+import { Db, ObjectId,MongoClient } from 'mongodb';
 // Initialize Stripe with your secret key
 const MONGO_URI = process.env.MONGO_URI || '';
 const DB_NAME = process.env.DB_NAME || '';
@@ -182,87 +181,116 @@ export async function stripeWebhookHandler(req: Request, res: Response) {
  
  
 // POST /cart/checkout
-router.post('/checkout', authMiddleware, async (req: Request, res: Response) => {
+router.post('/checkout', authMiddleware, async (req: Request<{}, {}, { addressId?: string }>, res: Response) => {
     try {
         const user_id: string = (req as any).user.user_id;
-        const carts = db.collection<Cart>('carts');;
-        const products = db.collection<Product>('ecommerce');
- 
+        const { addressId } = req.body;
+
+        // --- 1. VALIDATE INCOMING REQUEST ---
+        if (!addressId) {
+            return res.status(422).json({ detail: 'An addressId is required to place an order' });
+        }
+
+        const db = getDb();
+
+        // --- 2. FIND THE USER AND THE SELECTED ADDRESS ---
+        const usersCol = db.collection<UserDoc>('users');
+        const user = await usersCol.findOne({ user_id });
+
+        if (!user) {
+            return res.status(404).json({ detail: 'User not found' });
+        }
+
+        // Find the specific address from the user's address array
+        const selectedAddress = user.addresses.find(
+            (addr) => addr._id.toString() === addressId
+        );
+
+        if (!selectedAddress) {
+            return res.status(404).json({ detail: 'The selected address was not found in your profile. Please choose a valid address.' });
+        }
+
+        // --- 3. PROCESS THE CART (Your existing logic) ---
+        const carts = db.collection<Cart>('carts');
+        const productsCol = db.collection<Product>('ecommerce');
         const cart = await carts.findOne({ user_id });
+
         if (!cart || !Array.isArray(cart.items) || cart.items.length === 0) {
             return res.status(400).json({ detail: 'Cart is empty' });
         }
- 
+
         const order_items: OrderItem[] = [];
         let total = 0;
         const stripe_line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
- 
-        // Validate cart and build order details
+
         for (const item of cart.items) {
-            const product = await products.findOne({ id: item.product_id });
-            if (!product) {
-                return res.status(404).json({ detail: `Product ${item.product_id} not found` });
-            }
-            if ((product.stock ?? 0) < (item.quantity ?? 0)) {
-                return res.status(400).json({ detail: `Not enough stock for ${product.title}. Only ${product.stock} left.` });
-            }
- 
+            const product = await productsCol.findOne({ id: item.product_id });
+            if (!product) { return res.status(404).json({ detail: `Product ${item.product_id} not found` }); }
+            if ((product.stock ?? 0) < item.quantity) { return res.status(400).json({ detail: `Not enough stock for ${product.title}` }); }
+
             const itemPrice = Number(product.price);
             const itemQuantity = Number(item.quantity);
             total += itemPrice * itemQuantity;
- 
+
             order_items.push({
                 product_id: product.id,
                 title: product.title,
                 price: itemPrice,
                 quantity: itemQuantity,
+                thumbnail: product.thumbnail,
             });
- 
-            // Add item to the array for the Stripe session
+
             stripe_line_items.push({
                 price_data: {
-                    currency: 'usd', // IMPORTANT: Change currency if needed
+                    currency: 'usd',
                     product_data: {
                         name: product.title || 'Product',
+                        images: product.thumbnail ? [product.thumbnail] : [],
                     },
-                    unit_amount: Math.round(itemPrice * 100), // Price in cents
+                    unit_amount: Math.round(itemPrice * 100),
                 },
                 quantity: itemQuantity,
             });
         }
- 
-        // Create a pending order in our database
+
+        // --- 4. CREATE THE ORDER WITH THE SHIPPING ADDRESS ---
         const orders = db.collection<OrderDoc>('orders');
-        const orderDoc: OrderDoc = {
+        const orderDoc: Omit<OrderDoc, '_id'> = {
             user_id,
             items: order_items,
             total,
             status: 'pending',
+            createdAt: new Date(),
+            shippingAddress: selectedAddress // <-- The selected address is now saved with the order
         };
         const result = await orders.insertOne(orderDoc);
         const orderId = result.insertedId;
- 
-        // Create a Stripe Checkout Session
+
+        // --- 5. CREATE STRIPE SESSION (Your existing logic) ---
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             line_items: stripe_line_items,
             mode: 'payment',
-            success_url: 'https://dashboard.stripe.com/login?redirect=%2Fdevelopers',
-            cancel_url: 'https://www.youtube.com/watch?v=NgjERPTaC4Y&list=RDVMEXKJbsUmE&index=10',
+            success_url: 'https://brocode140.netlify.app/#/success',
+            cancel_url: 'https://brocode140.netlify.app/#/cancel',
+            customer_email: user.email, // Pre-fill the user's email
             metadata: {
                 orderId: String(orderId),
             },
         });
- 
+
         if (!session.url) {
             return res.status(500).json({ detail: 'Could not create Stripe session' });
         }
- 
-        // Return the Stripe session URL to the frontend for redirection
+
         res.json({ url: session.url });
- 
-    } catch (err) {
+
+    } catch (err: any) {
         console.error(err);
+        // Add more specific error handling for invalid ObjectId
+        if (err.name === 'BSONTypeError') {
+            return res.status(400).json({ detail: 'Invalid addressId format' });
+        }
         res.status(500).json({ detail: 'Internal Server Error' });
     }
 });
@@ -343,7 +371,4 @@ router.post(
 );
  
 export default router;
- 
-// Stripe Login | Sign in to the Stripe Dashboard
-// Sign in to the Stripe Dashboard to manage business payments and operations in your account. Manage payments and refunds, respond to disputes and more.
  
