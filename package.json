@@ -4,7 +4,7 @@
   "description": "A simple Express application with JWT authentication and MongoDB integration.",
   "main": "src/server.ts",
   "scripts": {
-    "start": "ts-node src/server.ts",
+    "start": "node dist/server.js",
     "build": "tsc",
     "dev": "ts-node-dev src/server.ts"
   },
