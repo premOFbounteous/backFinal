@@ -62,6 +62,7 @@ router.get("/", async (req: Request, res: Response) => {
 });
 
   router.get("/search", async (req: Request, res: Response) => {
+  console.log("searched")
   try {
     const db = getDb();
     const col = db.collection<Product>("ecommerce");

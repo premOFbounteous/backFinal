@@ -9,13 +9,10 @@ import express from "express";
 const MONGO_URI = process.env.MONGO_URI || '';
 const DB_NAME = process.env.DB_NAME || '';
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ||'', {
   apiVersion: '2025-08-27.basil',
 });
 let db:Db;
-const client = new MongoClient(MONGO_URI, { ignoreUndefined: true });
-   client.connect();
-  db = client.db(DB_NAME);
  
 const router = Router();
 function serializeCart(cart: Cart) {
@@ -30,68 +27,123 @@ function serializeCart(cart: Cart) {
 }
  
 // POST /cart/add
-router.post(
+// router.post(
+//   '/add',
+//   authMiddleware,
+//   async (req: Request<{}, {}, { product_id?: number; quantity?: number }>, res: Response) => {
+//     try {
+//       const user_id: string = (req as any).user.user_id;
+//       const { product_id, quantity } = req.body || {};
+ 
+//       if (!Number.isFinite(Number(product_id)) || !Number.isFinite(Number(quantity))) {
+//         res.status(422).json({ detail: 'product_id and quantity must be numbers' });
+//         return;
+//       }
+ 
+//       const db = getDb();
+//       const colProducts = db.collection<Product>('ecommerce');
+//       const product = await colProducts.findOne({ id: Number(product_id) });
+ 
+//       if (!product) {
+//         res.status(404).json({ detail: 'Product not found' });
+//         return;
+//       }
+//       if ((product.stock ?? 0) < Number(quantity)) {
+//         res.status(400).json({ detail: `Only ${product.stock ?? 0} items left in stock` });
+//         return;
+//       }
+ 
+//       const carts = db.collection<Cart>('carts');
+//       const cart = await carts.findOne({ user_id });
+ 
+//       if (!cart) {
+//         await carts.insertOne({
+//           user_id,
+//           items: [{ product_id: Number(product_id), quantity: Number(quantity) }],
+//         });
+//       } else {
+//         let updated = false;
+//         const items = Array.isArray(cart.items) ? cart.items : [];
+//         for (const i of items) {
+//           if (i.product_id === Number(product_id)) {
+//             const proposed = (i.quantity ?? 0) + Number(quantity);
+//             if ((product.stock ?? 0) < proposed) {
+//               res.status(400).json({ detail: `Only ${product.stock ?? 0} items left in stock` });
+//               return;
+//             }
+//             i.quantity = proposed;
+//             updated = true;
+//           }
+//         }
+//         if (!updated) {
+//           items.push({ product_id: Number(product_id), quantity: Number(quantity) });
+//         }
+//         await carts.updateOne({ user_id }, { $set: { items } });
+//       }
+ 
+//       res.json({ message: 'Item added to cart' });
+//     } catch (err) {
+//       console.error(err);
+//       res.status(500).json({ detail: 'Internal Server Error' });
+//     }
+//   }
+// );
+
+ router.post(
   '/add',
   authMiddleware,
   async (req: Request<{}, {}, { product_id?: number; quantity?: number }>, res: Response) => {
     try {
       const user_id: string = (req as any).user.user_id;
       const { product_id, quantity } = req.body || {};
- 
-      if (!Number.isFinite(Number(product_id)) || !Number.isFinite(Number(quantity))) {
-        res.status(422).json({ detail: 'product_id and quantity must be numbers' });
-        return;
+
+      // --- 1. VALIDATE INPUT ---
+      if (!Number.isFinite(Number(product_id)) || !Number.isFinite(Number(quantity)) || Number(quantity) <= 0) {
+        return res.status(422).json({ detail: 'product_id and quantity must be numbers, and quantity must be > 0' });
       }
- 
+
       const db = getDb();
       const colProducts = db.collection<Product>('ecommerce');
+
+      // --- 2. CHECK PRODUCT EXISTS ---
       const product = await colProducts.findOne({ id: Number(product_id) });
- 
       if (!product) {
-        res.status(404).json({ detail: 'Product not found' });
-        return;
+        return res.status(404).json({ detail: 'Product not found' });
       }
+
+      // --- 3. CHECK STOCK ---
       if ((product.stock ?? 0) < Number(quantity)) {
-        res.status(400).json({ detail: `Only ${product.stock ?? 0} items left in stock` });
-        return;
+        return res.status(400).json({ detail: `Only ${product.stock ?? 0} items left in stock` });
       }
- 
+
       const carts = db.collection<Cart>('carts');
-      const cart = await carts.findOne({ user_id });
- 
-      if (!cart) {
-        await carts.insertOne({
-          user_id,
-          items: [{ product_id: Number(product_id), quantity: Number(quantity) }],
-        });
-      } else {
-        let updated = false;
-        const items = Array.isArray(cart.items) ? cart.items : [];
-        for (const i of items) {
-          if (i.product_id === Number(product_id)) {
-            const proposed = (i.quantity ?? 0) + Number(quantity);
-            if ((product.stock ?? 0) < proposed) {
-              res.status(400).json({ detail: `Only ${product.stock ?? 0} items left in stock` });
-              return;
-            }
-            i.quantity = proposed;
-            updated = true;
-          }
-        }
-        if (!updated) {
-          items.push({ product_id: Number(product_id), quantity: Number(quantity) });
-        }
-        await carts.updateOne({ user_id }, { $set: { items } });
+
+      // --- 4. USE UPSERT + $INC TO ENSURE ATOMICITY ---
+      const result = await carts.updateOne(
+        { user_id, "items.product_id": Number(product_id) },
+        { $inc: { "items.$.quantity": Number(quantity) } }
+      );
+
+      if (result.matchedCount === 0) {
+        // No existing cart or product → use $push or create new cart
+        await carts.updateOne(
+          { user_id },
+          {
+            $push: { items: { product_id: Number(product_id), quantity: Number(quantity) } }
+          },
+          { upsert: true }
+        );
       }
- 
-      res.json({ message: 'Item added to cart' });
+
+      return res.json({ message: 'Item added to cart' });
     } catch (err) {
-      console.error(err);
+      console.error('Error adding to cart:', err);
       res.status(500).json({ detail: 'Internal Server Error' });
     }
   }
 );
- 
+
+
 // GET /cart
 router.get('/', authMiddleware, async (req: Request, res: Response) => {
   try {

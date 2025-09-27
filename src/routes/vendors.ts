@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import { getDb } from '../db/mongo';
 import { createAccessToken, createRefreshToken, verifyToken } from '../utils/jwt';
-import { VendorDoc, Product } from '../models/types';
+import { VendorDoc, Product, JWTPayload } from '../models/types'; // JWTPayload import karein
 import { vendorAuthMiddleware } from '../middleware/vendorAuth';
 
 const router = Router();
@@ -55,14 +55,43 @@ router.post('/login', async (req: Request<{}, {}, { email?: string; password?: s
             return res.status(401).json({ detail: 'Invalid credentials' });
         }
 
-        const payload = { vendor_id: vendor.vendor_id, role: 'vendor' as const };
+        const payload: JWTPayload = { vendor_id: vendor.vendor_id, role: 'vendor' };
         const access_token = createAccessToken(payload);
         const refresh_token = createRefreshToken(payload);
 
-        res.json({ access_token, refresh_token, token_type: 'bearer' });
+        res.json({ access_token, refresh_token, token_type: 'bearer', companyName: vendor.companyName, vendorId: vendor.vendor_id });
     } catch (err) {
         console.error(err);
         res.status(500).json({ detail: 'Internal Server Error' });
+    }
+});
+
+
+// NEW: POST /vendors/refresh
+router.post('/refresh', async (req, res) => {
+    try {
+        const { refresh_token } = req.body;
+
+        if (!refresh_token) {
+            return res.status(422).json({ detail: 'refresh_token is required' });
+        }
+
+        const payload = verifyToken(String(refresh_token)) as JWTPayload;
+
+        // Verify the token is for a vendor
+        if (payload.role !== 'vendor' || !payload.vendor_id) {
+            return res.status(401).json({ detail: 'Invalid refresh token for a vendor account' });
+        }
+
+        // Create new tokens for the vendor
+        const new_payload: JWTPayload = { vendor_id: payload.vendor_id, role: 'vendor' };
+        const access_token = createAccessToken(new_payload);
+        const new_refresh = createRefreshToken(new_payload);
+
+        res.json({ access_token, refresh_token: new_refresh, token_type: 'bearer' });
+    } catch (err) {
+        // Catches expired or malformed tokens
+        res.status(401).json({ detail: 'Invalid or expired token' });
     }
 });
 

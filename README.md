@@ -48,7 +48,14 @@ my-express-app
 
 4. **Run the application:**
    ```
-   npx ts-node-dev --transpile-only src/server.ts
+   npm run dev
+   ```
+
+5. **Test the API:**
+
+   ```
+   npx test src/tests/cart.test.ts--file to test
+   npx jest --coverage
    ```
 
 ## Usage

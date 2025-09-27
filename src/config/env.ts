@@ -8,5 +8,5 @@ export const DB_NAME = process.env.DB_NAME ;
 // JWT Config
 export const SECRET_KEY= process.env.JWT_SECRET||"some randon value";
 export const ALGORITHM = "HS256";
-export const ACCESS_TOKEN_EXPIRE_MINUTES = 15;
+export const ACCESS_TOKEN_EXPIRE_MINUTES = 0.5;
 export const REFRESH_TOKEN_EXPIRE_DAYS = 60 * 24 * 5; // preserved original
