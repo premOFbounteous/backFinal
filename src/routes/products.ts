@@ -61,7 +61,7 @@ router.get("/", async (req: Request, res: Response) => {
   }
 });
 
-  router.get("/search", async (req: Request, res: Response) => {
+  router.get("/normal-search", async (req: Request, res: Response) => {
   try {
     const db = getDb();
     const col = db.collection<Product>("ecommerce");
@@ -105,7 +105,7 @@ router.get("/", async (req: Request, res: Response) => {
 });
 
 //voice-search"
-router.get("/voice-search", async (req, res) => {
+router.get("/search", async (req, res) => {
   try {
     const botCol = getDb().collection("BOTdoc");
     const ecommerceCol = getDb().collection("ecommerce");
