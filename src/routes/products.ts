@@ -105,6 +105,7 @@ router.get("/", async (req: Request, res: Response) => {
 });
 
 //voice-search"
+// voice-search with pagination
 router.get("/search", async (req, res) => {
   try {
     const botCol = getDb().collection("BOTdoc");
@@ -112,8 +113,16 @@ router.get("/search", async (req, res) => {
 
     const search_str = (req.query.search_str ?? "").toString();
     if (!search_str || search_str.length < 1) {
-      return res.status(422).json({ detail: "Field 'search_str' min_length=1" });
+      return res
+        .status(422)
+        .json({ detail: "Field 'search_str' min_length=1" });
     }
+
+    let page = Number(req.query.page ?? 1);
+    let limit = Number(req.query.limit ?? 10);
+    if (!Number.isFinite(page) || page < 1) page = 1;
+    if (!Number.isFinite(limit) || limit < 1) limit = 10;
+    if (limit > 100) limit = 100;
 
     const products = await botCol
       .find({})
@@ -139,7 +148,8 @@ router.get("/search", async (req, res) => {
       contents: `User Query: "${search_str}"\nProducts:\n${readableProduct}\nReturn only the very relevant product Titles as a comma-separated plain text list.`,
     });
 
-    const resultText = response?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const resultText =
+      response?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
     if (!resultText) {
       return res.json({ result: "No match found" });
@@ -154,12 +164,22 @@ router.get("/search", async (req, res) => {
       return res.json({ result: "No valid product titles found" });
     }
 
+    const query = { title: { $in: titles } };
+    const total = await ecommerceCol.countDocuments(query);
+    const total_pages = Math.max(Math.ceil(total / limit), 1);
+    const skip = (page - 1) * limit;
+
     const matchedProducts = await ecommerceCol
-      .find({ title: { $in: titles } })
+      .find(query)
+      .skip(skip)
+      .limit(limit)
       .toArray();
 
     if (matchedProducts.length === 0) {
-      return res.json({ result: resultText, detail: "No products found in ecommerce collection" });
+      return res.json({
+        result: resultText,
+        detail: "No products found in ecommerce collection",
+      });
     }
 
     // Sanitize products
@@ -169,6 +189,10 @@ router.get("/search", async (req, res) => {
     });
     // console.log("this is data -- "+sanitizedProducts)
     return res.json({
+      total,
+      page,
+      limit,
+      pages: total_pages,
       result: resultText,
       products: sanitizedProducts,
     });
@@ -177,7 +201,6 @@ router.get("/search", async (req, res) => {
     return res.status(500).json({ detail: "Internal Server Error" });
   }
 });
-
 
 
 router.get("/:product_id", async (req: Request, res: Response) => {
