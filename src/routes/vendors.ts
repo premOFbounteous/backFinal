@@ -8,7 +8,7 @@ import { getDb } from '../db/mongo';
 
 import { createAccessToken, createRefreshToken, verifyToken } from '../utils/jwt';
 
-import { VendorDoc, Product, JWTPayload } from '../models/types'; // JWTPayload import karein
+import { VendorDoc, Product, JWTPayload, Wishlist, Cart } from '../models/types'; // JWTPayload import karein
 
 import { vendorAuthMiddleware } from '../middleware/vendorAuth';
  
@@ -312,47 +312,51 @@ router.put('/products/:productId', vendorAuthMiddleware, async (req: Request<{ p
 
 });
  
+
 // DELETE /vendors/products/:productId - Remove a product
-
 router.delete('/products/:productId', vendorAuthMiddleware, async (req: Request<{ productId: string }>, res: Response) => {
-
     try {
-
         const vendor_id = (req as any).vendor.vendor_id;
-
         const productId = Number(req.params.productId);
- 
+
         if (isNaN(productId)) {
-
             return res.status(400).json({ detail: 'Product ID must be a number' });
-
         }
- 
+
         const db = getDb();
+        const productsCollection = db.collection<Product>('ecommerce');
 
-        const result = await db.collection<Product>('ecommerce').deleteOne(
-
-            { id: productId, vendorId: vendor_id } // IMPORTANT: Security check for ownership
-
+        // 1. Product ko delete karein
+        const result = await productsCollection.deleteOne(
+            { id: productId, vendorId: vendor_id } // Ownership check
         );
- 
+
         if (result.deletedCount === 0) {
-
             return res.status(404).json({ detail: 'Product not found or you do not have permission to delete it' });
-
         }
- 
-        res.json({ message: 'Product deleted successfully' });
+
+        // 2. Carts collection ka type <Cart> batayein
+        const cartsCollection = db.collection<Cart>('carts');
+        await cartsCollection.updateMany(
+            { "items.product_id": productId },
+            { $pull: { items: { product_id: productId } } }
+        );
+
+        // 3. Wishlists collection ka type <Wishlist> batayein
+        const wishlistsCollection = db.collection<Wishlist>('wishlists');
+        await wishlistsCollection.updateMany(
+            { items: productId },
+            { $pull: { items: productId } }
+        );
+
+        res.json({ message: 'Product deleted successfully from store, and all user carts and wishlists' });
 
     } catch (err) {
-
         console.error(err);
-
         res.status(500).json({ detail: 'Internal Server Error' });
-
     }
-
 });
- 
+
+
 export default router;
  
