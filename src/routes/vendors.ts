@@ -241,6 +241,19 @@ router.post('/products', vendorAuthMiddleware, async (req: Request, res: Respons
  
         await productsCol.insertOne(newProduct as Product);
 
+        const botDoc = {
+            id: newProduct.id,
+            title: newProduct.title,
+            description: newProduct.description,
+            category: newProduct.category,
+            brand: newProduct.brand
+        };
+
+        // 3. 'BOTdoc' updated
+        const botCol = getDb().collection("BOTdoc");
+        await botCol.insertOne(botDoc);
+
+
         res.status(201).json({ message: 'Product added successfully', product: newProduct });
 
     } catch (err) {
