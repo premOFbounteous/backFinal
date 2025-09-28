@@ -104,8 +104,8 @@ router.get("/", async (req: Request, res: Response) => {
 
 });
 
-//voice-search"
-router.get("/voice-search", async (req, res) => {
+//ai-search"
+router.get("/asearch", async (req, res) => {
   try {
     const botCol = getDb().collection("BOTdoc");
     const ecommerceCol = getDb().collection("ecommerce");
