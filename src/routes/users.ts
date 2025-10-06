@@ -6,6 +6,8 @@ import { createAccessToken, createRefreshToken, verifyToken } from '../utils/jwt
 import { Address, JWTPayload, UserDoc } from '../models/types';
 import { ObjectId } from 'mongodb';
 import { authMiddleware } from '../middleware/auth';
+import SendMail  from '../helper/SendMail';
+
 
 const router = Router();
 
@@ -39,7 +41,14 @@ router.post(
       if (existsUsername) {
         return res.status(400).json({ detail: 'Username taken' });
       }
-
+      const subject = "Welcome to Broo Code!";
+      const text = `Hi ${username},\n\nThank you for registering! We're excited to have you on board.`;
+      const html = `
+        <h1>Welcome, ${username}!</h1>
+        <p>Thank you for registering at <strong>Broo Code</strong>. We're excited to have you on board.</p>
+        <p>You can now log in and start exploring.</p>
+      `;
+      SendMail(email,subject,text,html)
       const hashed = bcrypt.hashSync(password, 10);
       const user_id = randomUUID();
       

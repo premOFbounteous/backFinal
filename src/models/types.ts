@@ -24,6 +24,7 @@ export interface Product {
   thumbnail?: string;
   images?: string[];
   vendorId?: string; // --- ADDED: To link the product to a vendor ---
+  ngrams?: string;
 }
 
 // --- UPDATED: JWT PAYLOAD ---
